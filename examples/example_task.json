@@ -1,0 +1,28 @@
+{
+  "url": [
+    "illinois.edu",
+    "umich.edu",
+    "debian.org"
+  ],
+  "browser": {
+    "browser_binary": "",
+    "user_data_directory": "",
+    "add_browser_flags": [],
+    "remove_browser_flags": [],
+    "set_browser_flags": [],
+    "extensions": []
+  },
+  "completion": {
+    "completion_condition": "CompleteOnTimeoutOnly",
+    "timeout": 10
+  },
+  "data": {
+    "all_files": true,
+    "resource_metadata": true
+  },
+  "output": {
+    "path": "example_results",
+    "group_id": "default"
+  },
+  "max_attempts": 5
+}
