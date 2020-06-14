@@ -22,6 +22,5 @@ func Backend(finalResultChan <-chan t.FinalResult, monitoringChan chan<- t.TaskS
 }
 
 func storeResults(fr t.FinalResult) error {
-	log.Info(fr)
 	return nil
 }

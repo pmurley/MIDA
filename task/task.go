@@ -10,7 +10,7 @@ import (
 
 // ReadTasksFromFile is a wrapper function that reads single tasks, full task sets,
 // or compressed task sets from file.
-func ReadTasksFromFile(filename string) ([]t.Task, error) {
+func ReadTasksFromFile(filename string) ([]t.RawTask, error) {
 	tasks := make(t.TaskSet, 0)
 
 	data, err := ioutil.ReadFile(filename)
@@ -26,8 +26,8 @@ func ReadTasksFromFile(filename string) ([]t.Task, error) {
 	return tasks, nil
 }
 
-// WriteTaskSliceToFile takes a Task slice and writes it out as a JSON file to a given filename.
-func WriteTaskSliceToFile(tasks []t.Task, filename string) error {
+// WriteTaskSliceToFile takes a RawTask slice and writes it out as a JSON file to a given filename.
+func WriteTaskSliceToFile(tasks []t.RawTask, filename string) error {
 	taskBytes, err := WriteTaskSliceToBytes(tasks)
 	if err != nil {
 		return err
@@ -51,27 +51,33 @@ func WriteCompressedTaskSetToFile(tasks t.CompressedTaskSet, filename string) er
 
 // ExpandCompressedTaskSet takes a CompressedTaskSet object and converts it into a slice
 // of regular Tasks.
-func ExpandCompressedTaskSet(ts t.CompressedTaskSet) []t.Task {
-	var rawTasks []t.Task
-	for _, v := range *ts.URL {
-		urlString := v
-		newTask := t.Task{
-			URL:         &urlString,
-			Browser:     ts.Browser,
-			Completion:  ts.Completion,
-			Data:        ts.Data,
-			Output:      ts.Output,
-			MaxAttempts: ts.MaxAttempts,
-			Repeat:      ts.Repeat,
+func ExpandCompressedTaskSet(ts t.CompressedTaskSet) []t.RawTask {
+	var rawTasks []t.RawTask
+
+	repeats := 1
+	if ts.Repeat != nil && *ts.Repeat > 0 {
+		repeats = *ts.Repeat
+	}
+	for i := 0; i < repeats; i += 1 {
+		for _, singleUrl := range *ts.URL {
+			var url = singleUrl
+			newTask := t.RawTask{
+				URL:         &url,
+				Browser:     ts.Browser,
+				Completion:  ts.Completion,
+				Data:        ts.Data,
+				Output:      ts.Output,
+				MaxAttempts: ts.MaxAttempts,
+			}
+			rawTasks = append(rawTasks, newTask)
 		}
-		rawTasks = append(rawTasks, newTask)
 	}
 	return rawTasks
 }
 
 // ReadTasksFromBytes reads in tasks from a byte array. It will read them whether they
 // are formatted as individual tasks or as a CompressedTaskSet.
-func ReadTasksFromBytes(data []byte) ([]t.Task, error) {
+func ReadTasksFromBytes(data []byte) ([]t.RawTask, error) {
 	tasks := make(t.TaskSet, 0)
 	err := json.Unmarshal(data, &tasks)
 	if err == nil {
@@ -79,10 +85,10 @@ func ReadTasksFromBytes(data []byte) ([]t.Task, error) {
 		return tasks, nil
 	}
 
-	singleTask := t.Task{}
+	var singleTask t.RawTask
 	err = json.Unmarshal(data, &singleTask)
 	if err == nil {
-		log.Debug("Parsed single Task from file")
+		log.Debug("Parsed single RawTask from file")
 		return append(tasks, singleTask), nil
 	}
 
@@ -103,7 +109,7 @@ func ReadTasksFromBytes(data []byte) ([]t.Task, error) {
 }
 
 // WriteTaskSliceToBytes takes a slice of tasks and converts it to corresponding JSON bytes to transfer somewhere.
-func WriteTaskSliceToBytes(tasks []t.Task) ([]byte, error) {
+func WriteTaskSliceToBytes(tasks []t.RawTask) ([]byte, error) {
 	taskBytes, err := json.Marshal(tasks)
 	if err != nil {
 		return nil, err
@@ -122,11 +128,10 @@ func WriteCompressedTaskSetToBytes(tasks t.CompressedTaskSet) ([]byte, error) {
 	return taskBytes, nil
 }
 
-// AllocateNewTask allocates a new Task struct, initializing everything to zero values
-func AllocateNewTask() *t.Task {
-	var task = new(t.Task)
+// AllocateNewTask allocates a new RawTask struct, initializing everything to zero values
+func AllocateNewTask() *t.RawTask {
+	var task = new(t.RawTask)
 	task.URL = new(string)
-	task.Repeat = new(int)
 	task.MaxAttempts = new(int)
 
 	task.Browser = AllocateNewBrowserSettings()

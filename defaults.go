@@ -3,8 +3,6 @@ package main
 import (
 	t "github.com/pmurley/mida/types"
 	"github.com/spf13/viper"
-	"os"
-	"path"
 )
 
 // initViperConfig
@@ -49,8 +47,8 @@ const (
 	DefaultWindowsChromePath   = "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
 	DefaultWindowsChromiumPath = "\\%LocalAppData%\\chromium\\Application\\chrome.exe"
 
-	// Task completion
-	DefaultTimeAfterLoad       = 0  // Default time to stay on a page after load event is fired (in TimeAfterLoad mode)
+	// RawTask completion
+	DefaultTimeAfterLoad       = 5  // Default time to stay on a page after load event is fired (in TimeAfterLoad mode)
 	DefaultTimeout             = 10 // Default time (in seconds) to remain on a page before exiting browser
 	DefaultCompletionCondition = t.TimeoutOnly
 
@@ -65,8 +63,13 @@ const (
 	DefaultProtocolPrefix   = "https://"                             // If no protocol is provided, we use https for the crawl
 )
 
+var DefaultDataSettings = map[string]bool{
+	"AllResources":     true,
+	"ResourceMetadata": true,
+}
+
 var (
-	TempDir = path.Join(os.TempDir(), "MIDA") // Directory MIDA will use for temporary files
+	TempDir = ".mida_tmp" // Directory MIDA will use for temporary files
 )
 
 // Flags we apply by default to Chrome/Chromium-based browsers

@@ -4,6 +4,7 @@ package types
 
 import (
 	"github.com/chromedp/cdproto/network"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -26,6 +27,8 @@ const (
 	LoadEvent     CompletionCondition = "LoadEvent"     // Terminate crawl immediately when load event fires
 )
 
+var CompletionConditions = [...]CompletionCondition{TimeoutOnly, TimeAfterLoad, LoadEvent}
+
 // Settings describing how a particular crawl will terminate
 type CompletionSettings struct {
 	CompletionCondition *CompletionCondition `json:"completion_condition"`      // Condition under which crawl will complete
@@ -35,7 +38,7 @@ type CompletionSettings struct {
 
 // Settings describing which data MIDA will capture from the crawl
 type DataSettings struct {
-	AllResources     *bool `json:"all_files"`         // Save all resource files
+	AllResources     *bool `json:"all_resources"`     // Save all resource files
 	ResourceMetadata *bool `json:"resource_metadata"` // Save extensive metadata about each resource
 }
 
@@ -62,7 +65,7 @@ type OutputSettings struct {
 }
 
 // A raw MIDA task. This is the struct that is read from/written to file when tasks are stored as JSON.
-type Task struct {
+type RawTask struct {
 	URL *string `json:"url"` // The URL to be visited
 
 	Browser    *BrowserSettings    `json:"browser_settings"`    // Settings for launching the browser
@@ -71,13 +74,27 @@ type Task struct {
 	Output     *OutputSettings     `json:"output_settings"`     // Settings for what/how results will be saved
 
 	MaxAttempts *int `json:"max_attempts"` // Maximum number of failures before MIDA gives up on the task
-	Repeat      *int `json:"repeat"`       // Number of times to repeat the crawl after it finishes successfully
+}
+
+// Internal type built from the process of sanitizing a RawTask. Should contain all the parameters needed for a crawl
+// without the need to re-access the raw task. SanitizedTask should not contain information that cannot be deduced
+// based on the raw task (and system parameters).
+type SanitizedTask struct {
+	URL string
+
+	BrowserBinaryPath string   // Full path to the browser binary we use for the crawl
+	BrowserFlags      []string // List of flags we will use when opening the browser (does not include --remote-debugging-port or similar)
+	UserDataDirectory string   // Full path to the user data directory for the task
+
+	CS  CompletionSettings // Task completion settings for the task
+	DS  DataSettings       // Data Gathering Settings for the task
+	OPS OutputSettings     // Output settings for the task
 }
 
 // A slice of MIDA tasks, ready to be enqueued
-type TaskSet []Task
+type TaskSet []RawTask
 
-// A grouping of tasks for multiple URLs with otherwise identical settings
+// A grouping of tasks for multiple URLs that may be repeated
 type CompressedTaskSet struct {
 	URL *[]string `json:"url"` // List of URLs to be visited
 
@@ -90,10 +107,15 @@ type CompressedTaskSet struct {
 	Repeat      *int `json:"repeat"`       // Number of times to repeat the crawl after it finishes successfully
 }
 
-// Wrapper struct which contains a task, along with some dynamic metadata
+// Wrapper struct which contains a task, along with some dynamic metadata. This is an internal type only --
+// It should not be exported/stored.
 type TaskWrapper struct {
-	Task *Task // A pointer to a MIDA task
+	RawTask       RawTask       // A pointer to a MIDA task
+	SanitizedTask SanitizedTask // A sanitized MIDA task
 
+	UUID uuid.UUID
+
+	// Dynamic fields which may change as  our task is tried multiple times
 	CurrentAttempt   int      // The number of times we have tried this task so far
 	FailureCode      string   // Holds the current failure code for the task, or "" if the task has not failed
 	PastFailureCodes []string // Holds previous failures codes for the task

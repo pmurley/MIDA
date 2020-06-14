@@ -61,7 +61,7 @@ file, exiting when all tasks in the file are completed.`,
 	)
 
 	cmdFile.Flags().StringVarP(&taskFile, "task-file", "f", viper.GetString("task-file"),
-		"Task file to process")
+		"RawTask file to process")
 	cmdFile.Flags().BoolVarP(&shuffle, "shuffle", "", DefaultShuffle,
 		"Randomize processing order for tasks")
 	err := viper.BindPFlag("task-file", cmdFile.Flags().Lookup("task-file"))

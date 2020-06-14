@@ -1,6 +1,6 @@
-FROM golang:1.13
+FROM golang:1.14
 
-RUN apt-get update && apt-get -y upgrade && apt-get -y install chromium-browser xvfb
+RUN apt-get update && apt-get -y upgrade && apt-get -y install xvfb
 
 WORKDIR $GOPATH/src/github.com/pmurley/mida
 
@@ -8,6 +8,6 @@ COPY . .
 
 RUN go get -d -v ./...
 
-RUN go build ./mida
+RUN go build
 
-CMD ["./mida file"]
+CMD ["./mida", "file"]

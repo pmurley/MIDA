@@ -4,7 +4,7 @@
     "umich.edu",
     "debian.org"
   ],
-  "browser": {
+  "browser_settings": {
     "browser_binary": "",
     "user_data_directory": "",
     "add_browser_flags": [],
@@ -12,15 +12,15 @@
     "set_browser_flags": [],
     "extensions": []
   },
-  "completion": {
-    "completion_condition": "CompleteOnTimeoutOnly",
+  "completion_settings": {
+    "completion_condition": "TimeoutOnly",
     "timeout": 10
   },
-  "data": {
-    "all_files": true,
-    "resource_metadata": true
+  "data_settings": {
+    "all_resources": true,
+    "resource_metadata": false
   },
-  "output": {
+  "output_settings": {
     "path": "example_results",
     "group_id": "default"
   },

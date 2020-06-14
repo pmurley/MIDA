@@ -11,9 +11,9 @@ import (
 )
 
 // InitPipeline is the main MIDA pipeline, used whenever MIDA uses a browser to visit websites.
-// It consists of five main stages: Task Fetch, Task Sanitize, Site Visit, Postprocess, and Results Storage.
+// It consists of five main stages: RawTask Fetch, RawTask Sanitize, Site Visit, Postprocess, and Results Storage.
 func InitPipeline(cmd *cobra.Command, args []string) {
-	rawTaskChan := make(chan t.Task)              // channel connecting stages 1 and 2
+	rawTaskChan := make(chan t.RawTask)           // channel connecting stages 1 and 2
 	sanitizedTaskChan := make(chan t.TaskWrapper) // channel connecting stages 2 and 3
 	rawResultChan := make(chan t.RawResult)       // channel connecting stages 3 and 4
 	finalResultChan := make(chan t.FinalResult)   // channel connection stages 4 and 5

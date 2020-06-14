@@ -27,7 +27,6 @@ func Postprocess(rawResultChan <-chan t.RawResult, finalResultChan chan<- t.Fina
 // postprocessRawResult is called by Postprocess (stage 4) to convert a RawResult
 // to a FinalResult by applying postprocessing.
 func postprocessRawResult(rr t.RawResult) (t.FinalResult, error) {
-	log.Info(rr)
 	var fr t.FinalResult
 	return fr, nil
 }
