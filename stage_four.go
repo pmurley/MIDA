@@ -1,13 +1,13 @@
 package main
 
 import (
+	b "github.com/pmurley/mida/base"
 	"github.com/pmurley/mida/log"
-	t "github.com/pmurley/mida/types"
 )
 
-// Postprocess is stage 4 of the MIDA pipeline. It takes a RawResult produced by phase 3
+// stage4 is the postprocessing stage of the MIDA pipeline. It takes a RawResult produced by stage3
 // (which conducts the site visit) and conducts postprocessing to turn it into a FinalResult.
-func Postprocess(rawResultChan <-chan t.RawResult, finalResultChan chan<- t.FinalResult) {
+func stage4(rawResultChan <-chan b.RawResult, finalResultChan chan<- b.FinalResult) {
 	for rawResult := range rawResultChan {
 		fr, err := postprocessRawResult(rawResult)
 		if err != nil {
@@ -24,9 +24,9 @@ func Postprocess(rawResultChan <-chan t.RawResult, finalResultChan chan<- t.Fina
 	return
 }
 
-// postprocessRawResult is called by Postprocess (stage 4) to convert a RawResult
+// postprocessRawResult is called by stage4 (stage 4) to convert a RawResult
 // to a FinalResult by applying postprocessing.
-func postprocessRawResult(rr t.RawResult) (t.FinalResult, error) {
-	var fr t.FinalResult
+func postprocessRawResult(rr b.RawResult) (b.FinalResult, error) {
+	var fr b.FinalResult
 	return fr, nil
 }

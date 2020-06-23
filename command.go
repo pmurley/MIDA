@@ -1,6 +1,7 @@
 package main
 
 import (
+	b "github.com/pmurley/mida/base"
 	"github.com/pmurley/mida/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -62,7 +63,7 @@ file, exiting when all tasks in the file are completed.`,
 
 	cmdFile.Flags().StringVarP(&taskFile, "task-file", "f", viper.GetString("task-file"),
 		"RawTask file to process")
-	cmdFile.Flags().BoolVarP(&shuffle, "shuffle", "", DefaultShuffle,
+	cmdFile.Flags().BoolVarP(&shuffle, "shuffle", "", b.DefaultShuffle,
 		"Randomize processing order for tasks")
 	err := viper.BindPFlag("task-file", cmdFile.Flags().Lookup("task-file"))
 	if err != nil {

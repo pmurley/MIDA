@@ -1,8 +1,8 @@
 package monitor
 
 import (
+	b "github.com/pmurley/mida/base"
 	"github.com/pmurley/mida/log"
-	t "github.com/pmurley/mida/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
@@ -11,7 +11,7 @@ import (
 
 // RunPrometheusClient is responsible for running a client which will
 // be scraped by a Prometheus server
-func RunPrometheusClient(monitoringChan <-chan t.TaskSummary, port int) {
+func RunPrometheusClient(monitoringChan <-chan b.TaskSummary, port int) {
 
 	browserDurationHistogram := prometheus.NewHistogram(
 		prometheus.HistogramOpts{

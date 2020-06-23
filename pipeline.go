@@ -1,9 +1,9 @@
 package main
 
 import (
+	b "github.com/pmurley/mida/base"
 	"github.com/pmurley/mida/log"
 	"github.com/pmurley/mida/monitor"
-	t "github.com/pmurley/mida/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -11,14 +11,14 @@ import (
 )
 
 // InitPipeline is the main MIDA pipeline, used whenever MIDA uses a browser to visit websites.
-// It consists of five main stages: RawTask Fetch, RawTask Sanitize, Site Visit, Postprocess, and Results Storage.
+// It consists of five main stages: RawTask stage1, RawTask Sanitize, Site Visit, stage4, and Results Storage.
 func InitPipeline(cmd *cobra.Command, args []string) {
-	rawTaskChan := make(chan t.RawTask)           // channel connecting stages 1 and 2
-	sanitizedTaskChan := make(chan t.TaskWrapper) // channel connecting stages 2 and 3
-	rawResultChan := make(chan t.RawResult)       // channel connecting stages 3 and 4
-	finalResultChan := make(chan t.FinalResult)   // channel connection stages 4 and 5
-	retryChan := make(chan t.TaskWrapper)         // Channel connecting stage 5 and stage 3 for retrying failed tasks
-	monitorChan := make(chan t.TaskSummary)
+	rawTaskChan := make(chan b.RawTask)           // channel connecting stages 1 and 2
+	sanitizedTaskChan := make(chan b.TaskWrapper) // channel connecting stages 2 and 3
+	rawResultChan := make(chan b.RawResult)       // channel connecting stages 3 and 4
+	finalResultChan := make(chan b.FinalResult)   // channel connection stages 4 and 5
+	retryChan := make(chan b.TaskWrapper)         // Channel connecting stage 5 and stage 3 for retrying failed tasks
+	monitorChan := make(chan b.TaskSummary)
 
 	var crawlerWG sync.WaitGroup  // Tracks active crawler workers
 	var storageWG sync.WaitGroup  // Tracks active storage workers
@@ -37,20 +37,20 @@ func InitPipeline(cmd *cobra.Command, args []string) {
 	}
 
 	// Start goroutine that handles crawl results sanitization
-	go Postprocess(rawResultChan, finalResultChan)
+	go stage4(rawResultChan, finalResultChan)
 
 	// Start crawler(s) which take sanitized tasks as arguments
 	numCrawlers := viper.GetInt("crawlers")
 	crawlerWG.Add(numCrawlers)
 	for i := 0; i < numCrawlers; i++ {
-		go Crawler(sanitizedTaskChan, rawResultChan, retryChan, &crawlerWG)
+		go stage3(sanitizedTaskChan, rawResultChan, retryChan, &crawlerWG)
 	}
 
 	// Start goroutine which sanitizes input tasks
-	go SanitizeTasks(rawTaskChan, sanitizedTaskChan, &pipelineWG)
+	go stage2(rawTaskChan, sanitizedTaskChan, &pipelineWG)
 
 	// Start the goroutine responsible for getting our tasks
-	go Fetch(rawTaskChan, cmd, args)
+	go stage1(rawTaskChan, cmd, args)
 
 	// Wait for all of our crawlers to finish, and then allow them to exit
 	crawlerWG.Wait()
@@ -61,7 +61,7 @@ func InitPipeline(cmd *cobra.Command, args []string) {
 	storageWG.Wait()
 
 	// Cleanup any remaining temporary files before we exit
-	err := os.RemoveAll(TempDir)
+	err := os.RemoveAll(b.TempDir)
 	if err != nil {
 		log.Error(err)
 	}

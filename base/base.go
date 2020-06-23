@@ -1,10 +1,14 @@
-// This package contains most MIDA-native types. Many of these have members that come from types which
-// need to be imported from other packages, but this package does not depend on any other MIDA packages.
-package types
+// This package contains the base/root components of MIDA. Other MIDA packages import this package, but this package
+// should not depend on any other MIDA packages
+package base
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/chromedp/cdproto/network"
 	"github.com/google/uuid"
+	"io/ioutil"
+	"sync"
 	"time"
 )
 
@@ -44,12 +48,14 @@ type DataSettings struct {
 
 // Settings describing output of results to the local filesystem
 type LocalOutputSettings struct {
-	Path *string       `json:"path,omitempty"`          // Path over the overarching results directory to be written
-	DS   *DataSettings `json:"data_settings,omitempty"` // Data settings for output to local filesystem
+	Enable *bool         `json:"enable"`                  // Whether this storage method is enabled
+	Path   *string       `json:"path"`                    // Path over the overarching results directory to be written
+	DS     *DataSettings `json:"data_settings,omitempty"` // Data settings for output to local filesystem
 }
 
 // Settings describing results output via SSH/SFTP
 type SftpOutputSettings struct {
+	Enable         *bool         `json:"enable"`                  // Whether this storage method is enabled
 	Host           *string       `json:"host,omitempty"`          // IP address or domain name of host to store to
 	Port           *int          `json:"port,omitempty"`          // Port to initiate SSH/SFTP connection
 	Path           *string       `json:"path,omitempty"`          // Path of the overarching results directory to be written
@@ -158,6 +164,7 @@ type CrawlerInfo struct {
 type RawResult struct {
 	CrawlerInfo CrawlerInfo `json:"crawler_info"` // Information about the infrastructure used to crawl
 	TaskWrapper TaskWrapper `json:"task_wrapper"` // Contains the full task that MIDA executed
+	sync.Mutex
 }
 
 type Resource struct {
@@ -168,4 +175,198 @@ type Resource struct {
 type FinalResult struct {
 	Summary          TaskSummary         `json:"stats"`             // Statistics on timing and resource usage for the crawl
 	ResourceMetadata map[string]Resource `json:"resource_metadata"` // Metadata on each resource loaded
+}
+
+// AllocateNewTask allocates a new RawTask struct, initializing everything to zero values
+func AllocateNewTask() *RawTask {
+	var task = new(RawTask)
+	task.URL = new(string)
+	task.MaxAttempts = new(int)
+
+	task.Browser = AllocateNewBrowserSettings()
+	task.Completion = AllocateNewCompletionSettings()
+	task.Data = AllocateNewDataSettings()
+	task.Output = AllocateNewOutputSettings()
+
+	return task
+}
+
+// AllocateNewBrowserSettings allocates a new BrowserSettings struct, initializing everything to zero values
+func AllocateNewBrowserSettings() *BrowserSettings {
+	var bs = new(BrowserSettings)
+	bs.BrowserBinary = new(string)
+	bs.AddBrowserFlags = new([]string)
+	bs.RemoveBrowserFlags = new([]string)
+	bs.SetBrowserFlags = new([]string)
+	bs.Extensions = new([]string)
+	bs.UserDataDirectory = new(string)
+
+	return bs
+}
+
+// AllocateNewCompletionSettings allocates a new CompletionSettings struct, initializing everything to zero values
+func AllocateNewCompletionSettings() *CompletionSettings {
+	var cs = new(CompletionSettings)
+	cs.TimeAfterLoad = new(int)
+	cs.Timeout = new(int)
+	cs.CompletionCondition = new(CompletionCondition)
+
+	return cs
+}
+
+// AllocateNewDataSettings allocates a new DataSettings struct, initializing everything to zero values
+func AllocateNewDataSettings() *DataSettings {
+	var ds = new(DataSettings)
+	ds.AllResources = new(bool)
+	ds.ResourceMetadata = new(bool)
+
+	return ds
+}
+
+// AllocateNewOutputSettings allocates a new OutputSettings struct, initializing everything to zero values
+func AllocateNewOutputSettings() *OutputSettings {
+	var ops = new(OutputSettings)
+	ops.LocalOut = AllocateNewLocalOutputSettings()
+	ops.SftpOut = AllocateNewSftpOutputSettings()
+
+	return ops
+}
+
+func AllocateNewLocalOutputSettings() *LocalOutputSettings {
+	var los = new(LocalOutputSettings)
+	los.Enable = new(bool)
+	los.Path = new(string)
+	los.DS = AllocateNewDataSettings()
+
+	return los
+}
+
+func AllocateNewSftpOutputSettings() *SftpOutputSettings {
+	var sos = new(SftpOutputSettings)
+	sos.Enable = new(bool)
+	sos.UserName = new(string)
+	sos.Host = new(string)
+	sos.Port = new(int)
+	sos.Path = new(string)
+	sos.PrivateKeyFile = new(string)
+	sos.DS = AllocateNewDataSettings()
+
+	return sos
+}
+
+// ReadTasksFromFile is a wrapper function that reads single tasks, full task sets,
+// or compressed task sets from file.
+func ReadTasksFromFile(filename string) ([]RawTask, error) {
+	tasks := make(TaskSet, 0)
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return tasks, errors.New("failed to read task file: " + filename)
+	}
+
+	tasks, err = ReadTasksFromBytes(data)
+	if err != nil {
+		return tasks, err
+	}
+
+	return tasks, nil
+}
+
+// WriteTaskSliceToFile takes a RawTask slice and writes it out as a JSON file to a given filename.
+func WriteTaskSliceToFile(tasks []RawTask, filename string) error {
+	taskBytes, err := WriteTaskSliceToBytes(tasks)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(filename, taskBytes, 0644)
+	return err
+}
+
+// WriteCompressedTaskSetToFile takes a CompressedTaskSet and writes a JSON representation
+// of it out to a file
+func WriteCompressedTaskSetToFile(tasks CompressedTaskSet, filename string) error {
+	taskBytes, err := WriteCompressedTaskSetToBytes(tasks)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(filename, taskBytes, 0644)
+	return err
+}
+
+// ExpandCompressedTaskSet takes a CompressedTaskSet object and converts it into a slice
+// of regular Tasks.
+func ExpandCompressedTaskSet(ts CompressedTaskSet) []RawTask {
+	var rawTasks []RawTask
+
+	repeats := 1
+	if ts.Repeat != nil && *ts.Repeat > 0 {
+		repeats = *ts.Repeat
+	}
+	for i := 0; i < repeats; i += 1 {
+		for _, singleUrl := range *ts.URL {
+			var url = singleUrl
+			newTask := RawTask{
+				URL:         &url,
+				Browser:     ts.Browser,
+				Completion:  ts.Completion,
+				Data:        ts.Data,
+				Output:      ts.Output,
+				MaxAttempts: ts.MaxAttempts,
+			}
+			rawTasks = append(rawTasks, newTask)
+		}
+	}
+	return rawTasks
+}
+
+// ReadTasksFromBytes reads in tasks from a byte array. It will read them whether they
+// are formatted as individual tasks or as a CompressedTaskSet.
+func ReadTasksFromBytes(data []byte) ([]RawTask, error) {
+	tasks := make(TaskSet, 0)
+	err := json.Unmarshal(data, &tasks)
+	if err == nil {
+		return tasks, nil
+	}
+
+	var singleTask RawTask
+	err = json.Unmarshal(data, &singleTask)
+	if err == nil {
+		return append(tasks, singleTask), nil
+	}
+
+	compressedTaskSet := CompressedTaskSet{}
+	err = json.Unmarshal(data, &compressedTaskSet)
+	if err != nil {
+		return tasks, errors.New("failed to unmarshal tasks: [ " + err.Error() + " ]")
+	}
+
+	if compressedTaskSet.URL == nil || len(*compressedTaskSet.URL) == 0 {
+		return tasks, errors.New("no URLs given in task set")
+	}
+	tasks = ExpandCompressedTaskSet(compressedTaskSet)
+
+	return tasks, nil
+
+}
+
+// WriteTaskSliceToBytes takes a slice of tasks and converts it to corresponding JSON bytes to transfer somewhere.
+func WriteTaskSliceToBytes(tasks []RawTask) ([]byte, error) {
+	taskBytes, err := json.Marshal(tasks)
+	if err != nil {
+		return nil, err
+	}
+
+	return taskBytes, nil
+}
+
+// WriteCompressedTaskSetToBytes takes a CompressedTaskSet and converts it to corresponding JSON bytes to transfer somewhere.
+func WriteCompressedTaskSetToBytes(tasks CompressedTaskSet) ([]byte, error) {
+	taskBytes, err := json.Marshal(tasks)
+	if err != nil {
+		return nil, err
+	}
+
+	return taskBytes, nil
 }

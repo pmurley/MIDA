@@ -1,8 +1,8 @@
 package main
 
 import (
+	t "github.com/pmurley/mida/base"
 	"github.com/pmurley/mida/log"
-	t "github.com/pmurley/mida/types"
 	"sync"
 )
 

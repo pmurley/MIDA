@@ -1,13 +1,6 @@
 package main
 
-import (
-	"errors"
-	"math/rand"
-	"net/url"
-	"strings"
-	"time"
-)
-
+/*
 // Generates the random strings which are used as identifiers for each task
 // They need to be large enough to make collisions of tasks not a concern
 // Currently the key space is 7.95 * 10^24
@@ -49,24 +42,6 @@ func IsRemoved(toRemove []string, candidate string) bool {
 	return false
 }
 
-// ValidateURL makes a best-effort pass at validating/fixing URLs
-func ValidateURL(s string) (string, error) {
-	var result string
-	u, err := url.ParseRequestURI(s)
-	if err != nil {
-		if !strings.Contains(s, "://") {
-			u, err = url.ParseRequestURI(DefaultProtocolPrefix + s)
-			if err != nil {
-				return result, errors.New("bad url: " + s)
-			}
-		} else {
-			return result, errors.New("bad url: " + s)
-		}
-	}
-
-	return u.String(), nil
-}
-
 // DirNameFromURL takes a URL and sanitizes/escapes it so it can safely be used as a filename
 func DirNameFromURL(s string) (string, error) {
 	u, err := url.ParseRequestURI(s)
@@ -82,3 +57,4 @@ func DirNameFromURL(s string) (string, error) {
 	}
 	return result, nil
 }
+*/
