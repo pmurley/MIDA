@@ -1,8 +1,7 @@
 {
   "url": [
     "alibaba.com",
-    "cbssports.com",
-    "kumarde.com"
+    "google.com"
   ],
   "browser_settings": {
     "browser_binary": "",
@@ -17,7 +16,7 @@
     "timeout": 15
   },
   "data_settings": {
-    "all_resources": true,
+    "all_resources": false,
     "resource_metadata": true
   },
   "output_settings": {
@@ -25,5 +24,6 @@
       "enable": true,
       "path": "/home/pmurley/go/src/github.com/pmurley/mida/results"
     }
-  }
+  },
+  "repeat": 100
 }

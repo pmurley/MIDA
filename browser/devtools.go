@@ -3,7 +3,6 @@ package browser
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/chromedp/cdproto/debugger"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
@@ -11,7 +10,6 @@ import (
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	b "github.com/pmurley/mida/base"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -52,8 +50,6 @@ func VisitPageDevtoolsProtocol(tw b.TaskWrapper) (*b.RawResult, error) {
 			return nil, err
 		}
 	}
-
-	tw.Log.Infof("initiated site visit log for %s", tw.SanitizedTask.URL)
 
 	// If we are gathering all the resources, we need to create the corresponding directory
 	if *(tw.SanitizedTask.DS.AllResources) {
@@ -98,7 +94,7 @@ func VisitPageDevtoolsProtocol(tw b.TaskWrapper) (*b.RawResult, error) {
 	go PageLoadEventFired(ec.loadEventFiredChan, loadEventChan, &rawResult, &eventHandlerWG, browserContext)
 	go NetworkRequestWillBeSent(ec.requestWillBeSentChan, &rawResult, &eventHandlerWG, browserContext)
 	go NetworkResponseReceived(ec.responseReceivedChan, &rawResult, &eventHandlerWG, browserContext)
-	go NetworkLoadingFinished(ec.loadingFinishedChan, &rawResult, &eventHandlerWG, browserContext)
+	go NetworkLoadingFinished(ec.loadingFinishedChan, &rawResult, &eventHandlerWG, browserContext, tw.Log)
 
 	// Ensure the correct domains are enabled/disabled
 	err = chromedp.Run(browserContext, chromedp.ActionFunc(func(cxt context.Context) error {
@@ -128,10 +124,11 @@ func VisitPageDevtoolsProtocol(tw b.TaskWrapper) (*b.RawResult, error) {
 		// If we can't enable the domains on the browser, something is seriously wrong, so we return an error. No results.
 		tw.Log.Error("failed to enable DevTools domains")
 
-		closeContext, _ := context.WithTimeout(browserContext, 5*time.Nanosecond)
+		closeContext, _ := context.WithTimeout(browserContext, 5*time.Second)
 		err = chromedp.Cancel(closeContext)
 		if err != nil {
 			// This isn't an ideal solution, but if the graceful close fails, we have to just kill the browser to free resources
+			tw.Log.Errorf("failed to close browser gracefully, so we had to force it (%s)", err.Error())
 			allocCancel()
 		}
 
@@ -194,6 +191,7 @@ func VisitPageDevtoolsProtocol(tw b.TaskWrapper) (*b.RawResult, error) {
 		err = chromedp.Cancel(closeContext)
 		if err != nil {
 			// We failed to close chrome gracefully within the allotted timeout
+			allocCancel()
 			tw.Log.Errorf("failed to close browser gracefully, so we had to force it (%s)", err.Error())
 		}
 
@@ -208,8 +206,7 @@ func VisitPageDevtoolsProtocol(tw b.TaskWrapper) (*b.RawResult, error) {
 		return &rawResult, nil
 	}
 
-	// We have now successfully connected and navigated to the site
-
+	// We have now successfully connected and navigated to the site. Now we wait for a termination condition.
 	select {
 	case <-browserContext.Done():
 		// Browser crashed, closed manually, or we otherwise lost connection to it prematurely
@@ -248,6 +245,7 @@ func VisitPageDevtoolsProtocol(tw b.TaskWrapper) (*b.RawResult, error) {
 		}
 	case <-timeoutChan:
 		// Timeout before load event was fired, fall through to browser close and cleanup
+		tw.Log.Debug("general timeout before load event fired")
 	}
 
 	closeContext, _ := context.WithTimeout(browserContext, 5*time.Second)
@@ -327,145 +325,4 @@ func ChromeFormatFlag(f string) (string, interface{}, error) {
 	}
 
 	return "", "", errors.New("invalid flag: " + f)
-}
-
-func PageLoadEventFired(eventChan chan *page.EventLoadEventFired, loadEventChan chan<- bool, rawResult *b.RawResult, wg *sync.WaitGroup, ctxt context.Context) {
-	done := false
-	for {
-		select {
-		case _, ok := <-eventChan:
-			if !ok {
-				// Channel closed
-				done = true
-				break
-			}
-
-			rawResult.Lock()
-			rawResult.TaskSummary.TaskTiming.LoadEvent = time.Now()
-			rawResult.Unlock()
-
-			// Signal that a load event has fired
-			loadEventChan <- true
-
-		case <-ctxt.Done():
-			// Context canceled
-			done = true
-			break
-		}
-
-		if done {
-			break
-		}
-	}
-
-	wg.Done()
-}
-
-func NetworkRequestWillBeSent(eventChan chan *network.EventRequestWillBeSent, rawResult *b.RawResult, wg *sync.WaitGroup, ctxt context.Context) {
-
-	done := false
-	for {
-		select {
-		case ev, ok := <-eventChan:
-			if !ok {
-				// Channel closed
-				done = true
-				break
-			}
-
-			rawResult.Lock()
-			if _, ok := rawResult.DevTools.Network.RequestWillBeSent[ev.RequestID.String()]; !ok {
-				rawResult.DevTools.Network.RequestWillBeSent[ev.RequestID.String()] = make([]network.EventRequestWillBeSent, 0)
-			}
-			rawResult.DevTools.Network.RequestWillBeSent[ev.RequestID.String()] = append(
-				rawResult.DevTools.Network.RequestWillBeSent[ev.RequestID.String()], *ev)
-			rawResult.Unlock()
-		case <-ctxt.Done():
-			// Context canceled
-			done = true
-			break
-		}
-
-		if done {
-			break
-		}
-	}
-
-	wg.Done()
-}
-
-func NetworkResponseReceived(eventChan chan *network.EventResponseReceived, rawResult *b.RawResult, wg *sync.WaitGroup, ctxt context.Context) {
-	done := false
-	for {
-		select {
-		case ev, ok := <-eventChan:
-			if !ok {
-				// Channel closed
-				done = true
-				break
-			}
-
-			rawResult.Lock()
-			rawResult.DevTools.Network.ResponseReceived[ev.RequestID.String()] = *ev
-			rawResult.Unlock()
-		case <-ctxt.Done():
-			// Context canceled
-			done = true
-			break
-		}
-
-		if done {
-			break
-		}
-	}
-
-	wg.Done()
-}
-
-func NetworkLoadingFinished(eventChan chan *network.EventLoadingFinished, rawResult *b.RawResult, wg *sync.WaitGroup, ctxt context.Context) {
-	var err error
-	done := false
-	for {
-		select {
-		case ev, ok := <-eventChan:
-			if !ok {
-				// Channel closed
-				done = true
-				break
-			}
-
-			rawResult.Lock()
-			if _, ok := rawResult.DevTools.Network.RequestWillBeSent[ev.RequestID.String()]; !ok {
-				// Skipping downloading a resource we have not seen a request for
-				rawResult.Unlock()
-				break
-			}
-			var respBody []byte
-			err = chromedp.Run(ctxt, chromedp.ActionFunc(func(ctxt context.Context) error {
-				respBody, err = network.GetResponseBody(ev.RequestID).Do(ctxt)
-				return err
-			}))
-			if err != nil {
-				fmt.Println("err: ", err.Error())
-				// Failed to get response body for a known resource
-			} else {
-				err = ioutil.WriteFile(path.Join(rawResult.TaskSummary.TaskWrapper.TempDir,
-					b.DefaultResourceSubdir, ev.RequestID.String()), respBody, 0644)
-				if err != nil {
-				}
-			}
-
-			rawResult.Unlock()
-		case <-ctxt.Done():
-			// Context canceled
-			done = true
-			break
-		}
-
-		if done {
-			break
-		}
-	}
-
-	wg.Done()
 }
