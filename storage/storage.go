@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 func Store(finalResult b.FinalResult) error {
@@ -62,11 +63,36 @@ func Local(finalResult b.FinalResult) error {
 		}
 	}
 
+	if *st.OPS.LocalOut.DS.AllResources {
+		err = os.Rename(path.Join(tw.TempDir, b.DefaultResourceSubdir), path.Join(outPath, b.DefaultResourceSubdir))
+		if err != nil {
+			return errors.New("failed to copy resources directory into results directory")
+		}
+	}
+
+	// Chrome sometimes won't allow the user data directory to be deleted on the first try,
+	// so we loop until we can successfully remove it
+	err = os.RemoveAll(tw.SanitizedTask.UserDataDirectory)
+	for {
+		if _, err := os.Stat(tw.SanitizedTask.UserDataDirectory); err == nil {
+			time.Sleep(1 * time.Second)
+			err = os.RemoveAll(tw.SanitizedTask.UserDataDirectory)
+		} else {
+			break
+		}
+	}
+
 	// Store our log
 	tw.LogFile.Close()
-	err = os.Rename(tw.LogFile.Name(), path.Join(outPath, "local.log"))
+	err = os.Rename(tw.LogFile.Name(), path.Join(outPath, b.DefaultTaskLogFile))
 	if err != nil {
 		// We failed to write the log file -- WHERE DO WE LOG THIS   :/
+	}
+
+	// Remove our temporary results directory
+	err = os.RemoveAll(tw.TempDir)
+	if err != nil {
+		// We failed to remove our temporary results directory
 	}
 
 	return nil

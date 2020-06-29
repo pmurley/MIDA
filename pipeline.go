@@ -61,7 +61,7 @@ func InitPipeline(cmd *cobra.Command, args []string) {
 	storageWG.Wait()
 
 	// Cleanup any remaining temporary files before we exit
-	err := os.RemoveAll(b.TempDir)
+	err := os.RemoveAll(b.DefaultTempDir)
 	if err != nil {
 		log.Error(err)
 	}

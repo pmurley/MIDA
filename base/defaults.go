@@ -2,15 +2,16 @@ package base
 
 const (
 	// Output Parameters
+	DefaultTempDir              = "/home/pmurley/go/src/github.com/pmurley/mida/tmp"
 	DefaultLocalOutputPath      = "results"
 	DefaultResourceSubdir       = "resources"
 	DefaultCrawlMetadataFile    = "metadata.json"
 	DefaultResourceMetadataFile = "resource_metadata.json"
 	DefaultSftpPrivKeyFile      = "~/.ssh/id_rsa"
+	DefaultTaskLogFile          = "task.log"
 
 	// MIDA Configuration Defaults
 
-	DefaultTaskAttempts         = 1  // How many times to try a task before we give up and fail
 	DefaultNavTimeout           = 30 // How long to wait when connecting to a web server
 	DefaultSSHBackoffMultiplier = 5  // Exponential increase in time between tries when connecting for SFTP storage
 	DefaultTaskPriority         = 5  // Queue priority when creating new tasks -- Value should be 1-10
@@ -67,6 +68,4 @@ var (
 		"--no-sandbox",
 		"--safebrowsing-disable-auto-update",
 	}
-
-	TempDir = ".mida_tmp" // Directory MIDA will use for temporary files
 )

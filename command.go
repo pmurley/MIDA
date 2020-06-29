@@ -9,6 +9,7 @@ import (
 
 // getRootCommand returns the root cobra command which will be executed based on arguments passed to the program
 func getRootCommand() *cobra.Command {
+	var err error
 	var cmdRoot = &cobra.Command{Use: "mida"}
 
 	var (
@@ -29,6 +30,11 @@ func getRootCommand() *cobra.Command {
 		"Port used for hosting metrics for a Prometheus server")
 	cmdRoot.PersistentFlags().IntVarP(&logLevel, "log-level", "l", viper.GetInt("log-level"),
 		"Log Level for MIDA (0=Error, 1=Warn, 2=Info, 3=Debug)")
+
+	err = viper.BindPFlags(cmdRoot.PersistentFlags())
+	if err != nil {
+		log.Fatal("viper failed to bind pflags")
+	}
 
 	cmdRoot.AddCommand(getFileCommand())
 

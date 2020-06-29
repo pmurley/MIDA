@@ -80,8 +80,6 @@ type RawTask struct {
 	Completion *CompletionSettings `json:"completion_settings"` // Settings for when the site visit will complete
 	Data       *DataSettings       `json:"data_settings"`       // Settings for what data will be collected from the site
 	Output     *OutputSettings     `json:"output_settings"`     // Settings for what/how results will be saved
-
-	MaxAttempts *int `json:"max_attempts"` // Maximum number of failures before MIDA gives up on the task
 }
 
 // Internal type built from the process of sanitizing a RawTask. Should contain all the parameters needed for a crawl
@@ -111,24 +109,22 @@ type CompressedTaskSet struct {
 	Data       *DataSettings       `json:"data_settings"`       // Settings for what data will be collected from the site
 	Output     *OutputSettings     `json:"output_settings"`     // Settings for what/how results will be saved
 
-	MaxAttempts *int `json:"max_attempts"` // Maximum number of failures before MIDA gives up on the task
-	Repeat      *int `json:"repeat"`       // Number of times to repeat the crawl after it finishes successfully
+	Repeat *int `json:"repeat"` // Number of times to repeat the crawl after it finishes successfully
 }
 
-// Wrapper struct which contains a task, along with some dynamic metadata. This is an internal type only --
+// Wrapper struct which contains a task, along with some dynamic metadata. This is an internal struct only --
 // It should not be exported/stored.
 type TaskWrapper struct {
 	RawTask       RawTask       // A pointer to a MIDA task
 	SanitizedTask SanitizedTask // A sanitized MIDA task
 
-	UUID uuid.UUID
+	UUID    uuid.UUID
+	TempDir string // Temporary directory where results are stored. Can be the same as the UserDataDir in some cases.
 
-	// Dynamic fields which may change as  our task is tried multiple times
-	Log              *logrus.Logger
-	LogFile          *os.File
-	CurrentAttempt   int      // The number of times we have tried this task so far
-	FailureCode      string   // Holds the current failure code for the task, or "" if the task has not failed
-	PastFailureCodes []string // Holds previous failures codes for the task
+	// Dynamic fields
+	Log         *logrus.Logger
+	LogFile     *os.File
+	FailureCode string // Holds the failure code for the task, or "" if the task has not failed
 }
 
 // Timing data for the processing of a particular task
@@ -195,7 +191,6 @@ type FinalResult struct {
 func AllocateNewTask() *RawTask {
 	var task = new(RawTask)
 	task.URL = new(string)
-	task.MaxAttempts = new(int)
 
 	task.Browser = AllocateNewBrowserSettings()
 	task.Completion = AllocateNewCompletionSettings()
@@ -322,12 +317,11 @@ func ExpandCompressedTaskSet(ts CompressedTaskSet) []RawTask {
 		for _, singleUrl := range *ts.URL {
 			var url = singleUrl
 			newTask := RawTask{
-				URL:         &url,
-				Browser:     ts.Browser,
-				Completion:  ts.Completion,
-				Data:        ts.Data,
-				Output:      ts.Output,
-				MaxAttempts: ts.MaxAttempts,
+				URL:        &url,
+				Browser:    ts.Browser,
+				Completion: ts.Completion,
+				Data:       ts.Data,
+				Output:     ts.Output,
 			}
 			rawTasks = append(rawTasks, newTask)
 		}

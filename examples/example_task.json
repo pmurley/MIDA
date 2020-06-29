@@ -1,6 +1,8 @@
 {
   "url": [
-    "alibaba.com"
+    "alibaba.com",
+    "cbssports.com",
+    "kumarde.com"
   ],
   "browser_settings": {
     "browser_binary": "",
@@ -21,11 +23,7 @@
   "output_settings": {
     "local_output_settings": {
       "enable": true,
-      "path": "/home/pmurley/go/src/github.com/pmurley/mida/results",
-      "data_settings": {
-        "all_resources": true
-      }
+      "path": "/home/pmurley/go/src/github.com/pmurley/mida/results"
     }
-  },
-  "max_attempts": 5
+  }
 }

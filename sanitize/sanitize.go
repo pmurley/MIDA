@@ -23,26 +23,21 @@ func Task(rt b.RawTask) (b.TaskWrapper, error) {
 	// Each task gets its own UUID
 	tw.UUID = uuid.New()
 
-	// Make sure our temporary directory exists, and if not, make sure we can create it
-	if _, err := os.Stat(b.TempDir); err != nil {
-		err = os.MkdirAll(b.TempDir, 0755)
-		if err != nil {
-			return b.TaskWrapper{}, errors.New("failed to create temp directory")
-		}
+	// Create our temporary directory for this specific site visit
+	tw.TempDir = path.Join(b.DefaultTempDir, tw.UUID.String()[:8])
+	err = os.MkdirAll(tw.TempDir, 0755)
+	if err != nil {
+		return b.TaskWrapper{}, errors.New("failed to create temporary directory for task: " + err.Error())
 	}
 
 	// Create our log for this specific site visit
 	tw.Log = logrus.New()
 	tw.Log.SetLevel(logrus.DebugLevel)
-	logFilePath := path.Join(b.TempDir, tw.UUID.String()+".log")
-	tw.LogFile, err = os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE, 0644)
+	tw.LogFile, err = os.OpenFile(path.Join(tw.TempDir, b.DefaultTaskLogFile), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return b.TaskWrapper{}, errors.New("failed to create log file: " + err.Error())
 	}
 	tw.Log.SetOutput(tw.LogFile)
-
-	// Allocate a new slice for past failure codes
-	tw.PastFailureCodes = make([]string, 0)
 
 	if rt.URL == nil || *rt.URL == "" {
 		return b.TaskWrapper{}, errors.New("missing or empty URL for task")
@@ -52,20 +47,23 @@ func Task(rt b.RawTask) (b.TaskWrapper, error) {
 	if err != nil {
 		return b.TaskWrapper{}, err
 	}
+	tw.Log.Infof("initiated log for: %s", tw.SanitizedTask.URL)
 
-	tw.SanitizedTask.BrowserBinaryPath, err = getBrowserBinaryPath(rt)
+	tw.SanitizedTask.BrowserBinaryPath, err = getBrowserBinaryPath(rt, tw.Log)
 	if err != nil {
 		return b.TaskWrapper{}, err
 	}
 
-	tw.SanitizedTask.BrowserFlags, err = getBrowserFlags(rt)
+	tw.SanitizedTask.BrowserFlags, err = getBrowserFlags(rt, tw.Log)
 	if err != nil {
 		return b.TaskWrapper{}, err
 	}
 
-	tw.SanitizedTask.UserDataDirectory, err = getUserDataDirectory(rt, tw.UUID)
+	tw.SanitizedTask.UserDataDirectory, err = getUserDataDirectory(rt, tw.TempDir)
 	if err != nil {
 		return b.TaskWrapper{}, err
+	} else {
+		tw.Log.Debugf("set user data directory: %s", tw.SanitizedTask.UserDataDirectory)
 	}
 
 	tw.SanitizedTask.CS, err = CompletionSettings(rt.Completion)
@@ -92,29 +90,35 @@ func Task(rt b.RawTask) (b.TaskWrapper, error) {
 // Order of preference:
 //   1. Chromium
 //   2. Chrome
-func getBrowserBinaryPath(rt b.RawTask) (string, error) {
+func getBrowserBinaryPath(rt b.RawTask, log *logrus.Logger) (string, error) {
 
 	if rt.Browser == nil || rt.Browser.BrowserBinary == nil || *rt.Browser.BrowserBinary == "" {
 		if runtime.GOOS == "darwin" {
 			if _, err := os.Stat(b.DefaultOSXChromiumPath); err == nil {
+				log.Debugf("no browser set, defaulting to to %s", b.DefaultOSXChromiumPath)
 				return b.DefaultOSXChromiumPath, nil
 			} else if _, err := os.Stat(b.DefaultOSXChromePath); err == nil {
+				log.Debugf("no browser set, defaulting to to %s", b.DefaultOSXChromePath)
 				return b.DefaultOSXChromePath, nil
 			} else {
 				return "", errors.New("no browser binary provided and could not find a default")
 			}
 		} else if runtime.GOOS == "linux" {
 			if _, err := os.Stat(b.DefaultLinuxChromiumPath); err == nil {
+				log.Debugf("no browser set, defaulting to to %s", b.DefaultLinuxChromiumPath)
 				return b.DefaultLinuxChromiumPath, nil
 			} else if _, err := os.Stat(b.DefaultLinuxChromePath); err == nil {
+				log.Debugf("no browser set, defaulting to to %s", b.DefaultLinuxChromePath)
 				return b.DefaultLinuxChromePath, nil
 			} else {
 				return "", errors.New("no browser binary provided and could not find a default")
 			}
 		} else if runtime.GOOS == "windows" {
 			if _, err := os.Stat(b.DefaultWindowsChromiumPath); err == nil {
+				log.Debugf("no browser set, defaulting to to %s", b.DefaultWindowsChromiumPath)
 				return b.DefaultWindowsChromiumPath, nil
 			} else if _, err := os.Stat(b.DefaultWindowsChromePath); err == nil {
+				log.Debugf("no browser set, defaulting to to %s", b.DefaultWindowsChromePath)
 				return b.DefaultWindowsChromePath, nil
 			} else {
 				return "", errors.New("no browser binary provided and could not find a default")
@@ -125,6 +129,7 @@ func getBrowserBinaryPath(rt b.RawTask) (string, error) {
 	} else {
 		_, err := os.Stat(*rt.Browser.BrowserBinary)
 		if err != nil {
+			log.Debugf("set browser to %s", *rt.Browser.BrowserBinary)
 			return *rt.Browser.BrowserBinary, nil
 		}
 
@@ -132,22 +137,27 @@ func getBrowserBinaryPath(rt b.RawTask) (string, error) {
 		// We offer some shortcuts for popular browsers
 		if strings.ToLower(*rt.Browser.BrowserBinary) == "chrome" {
 			if _, err := os.Stat(b.DefaultOSXChromePath); err == nil && runtime.GOOS == "darwin" {
+				log.Debugf("set browser to %s", b.DefaultOSXChromePath)
 				return b.DefaultOSXChromePath, nil
 			} else if _, err := os.Stat(b.DefaultLinuxChromePath); err == nil && runtime.GOOS == "linux" {
+				log.Debugf("set browser to %s", b.DefaultLinuxChromePath)
 				return b.DefaultLinuxChromePath, nil
 			} else if _, err := os.Stat(b.DefaultWindowsChromePath); err == nil && runtime.GOOS == "windows" {
+				log.Debugf("set browser to %s", b.DefaultWindowsChromePath)
 				return b.DefaultWindowsChromePath, nil
 			} else {
 				return "", errors.New("could not find chrome on the system")
 			}
 		} else if strings.ToLower(*rt.Browser.BrowserBinary) == "chromium" ||
 			strings.ToLower(*rt.Browser.BrowserBinary) == "chromium-browser" {
-
 			if _, err := os.Stat(b.DefaultOSXChromiumPath); err == nil && runtime.GOOS == "darwin" {
+				log.Debugf("set browser to %s", b.DefaultOSXChromiumPath)
 				return b.DefaultOSXChromiumPath, nil
 			} else if _, err := os.Stat(b.DefaultLinuxChromiumPath); err == nil && runtime.GOOS == "linux" {
+				log.Debugf("set browser to %s", b.DefaultLinuxChromiumPath)
 				return b.DefaultLinuxChromiumPath, nil
 			} else if _, err := os.Stat(b.DefaultWindowsChromiumPath); err == nil && runtime.GOOS == "windows" {
+				log.Debugf("set browser to %s", b.DefaultWindowsChromiumPath)
 				return b.DefaultWindowsChromiumPath, nil
 			} else {
 				return "", errors.New("could not find chrome on the system")
@@ -161,7 +171,7 @@ func getBrowserBinaryPath(rt b.RawTask) (string, error) {
 // getBrowserFlags uses the flag and extension settings passed in in the RawTask to create a single string
 // slice with the flags we will use for our browser. Note that this slice will not include the specific
 // flag which allows remote control of the browser. This flag will be added in Stage 3.
-func getBrowserFlags(rt b.RawTask) ([]string, error) {
+func getBrowserFlags(rt b.RawTask, log *logrus.Logger) ([]string, error) {
 	result := make([]string, 0)
 
 	if rt.Browser == nil {
@@ -197,6 +207,7 @@ func getBrowserFlags(rt b.RawTask) ([]string, error) {
 			for _, e := range (*rt.Browser.Extensions)[1:] {
 				extensionsFlag += ","
 				extensionsFlag += e
+				log.Debugf("adding extension: %s", e)
 			}
 		}
 
@@ -228,12 +239,12 @@ func getBrowserFlags(rt b.RawTask) ([]string, error) {
 
 // getUserDataDirectory reads a raw task. If the task specifies a valid user data directory, it is
 // returned. Otherwise, getUserDataDirectory selects a default directory based on the task UUID
-func getUserDataDirectory(rt b.RawTask, uuid uuid.UUID) (string, error) {
+func getUserDataDirectory(rt b.RawTask, tempDir string) (string, error) {
 	if rt.Browser != nil && rt.Browser.UserDataDirectory != nil && *rt.Browser.UserDataDirectory != "" {
 		return *rt.Browser.UserDataDirectory, nil
 	} else {
 		// Use the first 8 characters of the uuid for temporary directories by default
-		return path.Join(b.TempDir, uuid.String()[0:8]), nil
+		return tempDir + "-udd", nil
 	}
 }
 
