@@ -28,19 +28,4 @@ func IsRemoved(toRemove []string, candidate string) bool {
 	return false
 }
 
-// DirNameFromURL takes a URL and sanitizes/escapes it so it can safely be used as a filename
-func DirNameFromURL(s string) (string, error) {
-	u, err := url.ParseRequestURI(s)
-	if err != nil {
-		return "", err
-	}
-
-	// Replace all disallowed file path characters (both Windows and Unix) so we can safely use URL as directory name
-	disallowedChars := []string{"/", "\\", ">", "<", ":", "|", "?", "*"}
-	result := u.Host + u.EscapedPath()
-	for _, c := range disallowedChars {
-		result = strings.Replace(result, c, "-", -1)
-	}
-	return result, nil
-}
 */

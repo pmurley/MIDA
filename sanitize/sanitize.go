@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	b "github.com/pmurley/mida/base"
+	"github.com/sirupsen/logrus"
 	"net/url"
 	"os"
 	"os/user"
@@ -21,6 +22,24 @@ func Task(rt b.RawTask) (b.TaskWrapper, error) {
 
 	// Each task gets its own UUID
 	tw.UUID = uuid.New()
+
+	// Make sure our temporary directory exists, and if not, make sure we can create it
+	if _, err := os.Stat(b.TempDir); err != nil {
+		err = os.MkdirAll(b.TempDir, 0755)
+		if err != nil {
+			return b.TaskWrapper{}, errors.New("failed to create temp directory")
+		}
+	}
+
+	// Create our log for this specific site visit
+	tw.Log = logrus.New()
+	tw.Log.SetLevel(logrus.DebugLevel)
+	logFilePath := path.Join(b.TempDir, tw.UUID.String()+".log")
+	tw.LogFile, err = os.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return b.TaskWrapper{}, errors.New("failed to create log file: " + err.Error())
+	}
+	tw.Log.SetOutput(tw.LogFile)
 
 	// Allocate a new slice for past failure codes
 	tw.PastFailureCodes = make([]string, 0)

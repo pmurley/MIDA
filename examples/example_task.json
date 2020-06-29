@@ -1,6 +1,6 @@
 {
   "url": [
-    "illinois.edu"
+    "alibaba.com"
   ],
   "browser_settings": {
     "browser_binary": "",
@@ -12,19 +12,18 @@
   },
   "completion_settings": {
     "completion_condition": "TimeoutOnly",
-    "timeout": 11
+    "timeout": 15
   },
   "data_settings": {
     "all_resources": true,
-    "resource_metadata": false
+    "resource_metadata": true
   },
   "output_settings": {
-    "sftp_output_settings": {
+    "local_output_settings": {
       "enable": true,
-      "host": "myhost",
-      "path": "outputpath",
+      "path": "/home/pmurley/go/src/github.com/pmurley/mida/results",
       "data_settings": {
-        "all_resources": false
+        "all_resources": true
       }
     }
   },

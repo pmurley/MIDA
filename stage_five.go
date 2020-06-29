@@ -3,14 +3,15 @@ package main
 import (
 	t "github.com/pmurley/mida/base"
 	"github.com/pmurley/mida/log"
+	"github.com/pmurley/mida/storage"
 	"sync"
 )
 
-func Backend(finalResultChan <-chan t.FinalResult, monitoringChan chan<- t.TaskSummary,
+func stage5(finalResultChan <-chan t.FinalResult, monitoringChan chan<- t.TaskSummary,
 	retryChan chan<- t.TaskWrapper, storageWG *sync.WaitGroup, pipelineWG *sync.WaitGroup) {
 
 	for fr := range finalResultChan {
-		err := storeResults(fr)
+		err := storage.Store(fr)
 		if err != nil {
 			log.Error(err)
 		}
@@ -19,8 +20,4 @@ func Backend(finalResultChan <-chan t.FinalResult, monitoringChan chan<- t.TaskS
 	}
 
 	storageWG.Done()
-}
-
-func storeResults(fr t.FinalResult) error {
-	return nil
 }

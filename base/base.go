@@ -7,7 +7,9 @@ import (
 	"errors"
 	"github.com/chromedp/cdproto/network"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 )
@@ -122,6 +124,8 @@ type TaskWrapper struct {
 	UUID uuid.UUID
 
 	// Dynamic fields which may change as  our task is tried multiple times
+	Log              *logrus.Logger
+	LogFile          *os.File
 	CurrentAttempt   int      // The number of times we have tried this task so far
 	FailureCode      string   // Holds the current failure code for the task, or "" if the task has not failed
 	PastFailureCodes []string // Holds previous failures codes for the task
@@ -160,21 +164,31 @@ type CrawlerInfo struct {
 	UserAgent      string `json:"user_agent"`      // User agent we are using
 }
 
+type DevtoolsNetworkRawData struct {
+	RequestWillBeSent map[string][]network.EventRequestWillBeSent
+	ResponseReceived  map[string]network.EventResponseReceived
+}
+
+type DevToolsRawData struct {
+	Network DevtoolsNetworkRawData
+}
+
 // The results MIDA gathers before they are post-processed
 type RawResult struct {
-	CrawlerInfo CrawlerInfo `json:"crawler_info"` // Information about the infrastructure used to crawl
-	TaskSummary TaskSummary `json:"task_summary"` // Summary information about the task, not necessarily complete in RawResult
+	CrawlerInfo CrawlerInfo     // Information about the infrastructure used to visit the site
+	TaskSummary TaskSummary     // Summary information about the task, not necessarily complete in RawResult
+	DevTools    DevToolsRawData // Struct Containing Raw Data gathered from a DevTools site visit
 	sync.Mutex
 }
 
-type Resource struct {
-	Requests  []network.EventRequestWillBeSent `json:"requests"`  // All requests sent for this particular request
-	Responses []network.EventResponseReceived  `json:"responses"` // All responses received for this particular request
+type DTResource struct {
+	Requests []network.EventRequestWillBeSent `json:"requests"`  // All requests sent for this particular request
+	Response network.EventResponseReceived    `json:"responses"` // All responses received for this particular request
 }
 
 type FinalResult struct {
-	Summary          TaskSummary         `json:"stats"`             // Statistics on timing and resource usage for the crawl
-	ResourceMetadata map[string]Resource `json:"resource_metadata"` // Metadata on each resource loaded
+	Summary            TaskSummary           `json:"stats"`             // Statistics on timing and resource usage for the crawl
+	DTResourceMetadata map[string]DTResource `json:"resource_metadata"` // Metadata on each resource loaded
 }
 
 // AllocateNewTask allocates a new RawTask struct, initializing everything to zero values

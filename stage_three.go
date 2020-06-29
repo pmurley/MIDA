@@ -11,7 +11,7 @@ func stage3(taskWrapperChan <-chan t.TaskWrapper, rawResultChan chan<- t.RawResu
 	for tw := range taskWrapperChan {
 		rawResult, err := browser.VisitPageDevtoolsProtocol(tw)
 		if err != nil {
-			continue
+			break
 		}
 
 		rawResultChan <- *rawResult

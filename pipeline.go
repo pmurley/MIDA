@@ -33,13 +33,13 @@ func InitPipeline(cmd *cobra.Command, args []string) {
 	numStorers := viper.GetInt("storers")
 	storageWG.Add(numStorers)
 	for i := 0; i < viper.GetInt("storers"); i++ {
-		go Backend(finalResultChan, monitorChan, retryChan, &storageWG, &pipelineWG)
+		go stage5(finalResultChan, monitorChan, retryChan, &storageWG, &pipelineWG)
 	}
 
 	// Start goroutine that handles crawl results sanitization
 	go stage4(rawResultChan, finalResultChan)
 
-	// Start crawler(s) which take sanitized tasks as arguments
+	// Start site visitors(s) which take sanitized tasks as arguments
 	numCrawlers := viper.GetInt("crawlers")
 	crawlerWG.Add(numCrawlers)
 	for i := 0; i < numCrawlers; i++ {
