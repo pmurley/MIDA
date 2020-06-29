@@ -14,23 +14,9 @@ func GenRandomIdentifier() string {
 
 	return b
 }
+*/
 
-// ChromedpFormatFlag takes a variety of possible flag formats and puts them in a format that chromedp understands (key/value)
-func ChromedpFormatFlag(f string) (string, interface{}, error) {
-	if strings.HasPrefix(f, "--") {
-		f = f[2:]
-	}
-
-	parts := strings.Split(f, "=")
-	if len(parts) == 1 {
-		return parts[0], true, nil
-	} else if len(parts) == 2 {
-		return parts[0], parts[1], nil
-	}
-
-	return "", "", errors.New("Invalid flag: " + f)
-}
-
+/*
 // Check to see if a flag has been removed by the RemoveBrowserFlags setting
 func IsRemoved(toRemove []string, candidate string) bool {
 	for _, x := range toRemove {

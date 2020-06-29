@@ -163,7 +163,7 @@ type CrawlerInfo struct {
 // The results MIDA gathers before they are post-processed
 type RawResult struct {
 	CrawlerInfo CrawlerInfo `json:"crawler_info"` // Information about the infrastructure used to crawl
-	TaskWrapper TaskWrapper `json:"task_wrapper"` // Contains the full task that MIDA executed
+	TaskSummary TaskSummary `json:"task_summary"` // Summary information about the task, not necessarily complete in RawResult
 	sync.Mutex
 }
 

@@ -14,7 +14,7 @@ func stage3(taskWrapperChan <-chan t.TaskWrapper, rawResultChan chan<- t.RawResu
 			continue
 		}
 
-		rawResultChan <- rawResult
+		rawResultChan <- *rawResult
 	}
 
 	crawlerWG.Done()
