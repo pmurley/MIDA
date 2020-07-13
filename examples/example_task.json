@@ -22,8 +22,8 @@
   "output_settings": {
     "local_output_settings": {
       "enable": true,
-      "path": "/home/pmurley/go/src/github.com/pmurley/mida/results"
+      "path": "~/go/src/github.com/pmurley/mida/results"
     }
   },
-  "repeat": 100
+  "repeat": 1
 }
