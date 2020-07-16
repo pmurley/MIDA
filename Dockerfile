@@ -1,6 +1,6 @@
 FROM golang:1.14
 
-RUN apt-get update && apt-get -y upgrade && apt-get -y install xvfb
+RUN apt-get update && apt-get -y install xvfb chromium
 
 WORKDIR $GOPATH/src/github.com/pmurley/mida
 

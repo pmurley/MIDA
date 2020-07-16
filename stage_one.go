@@ -17,7 +17,7 @@ func stage1(rtc chan<- b.RawTask, cmd *cobra.Command, args []string) {
 	case "file":
 		rawTasks, err := fetch.FromFile(viper.GetString("task-file"))
 		if err != nil {
-			log.Error(err)
+			log.Log.Error(err)
 			close(rtc)
 			return
 		}

@@ -2,7 +2,6 @@ package monitor
 
 import (
 	b "github.com/pmurley/mida/base"
-	"github.com/pmurley/mida/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
@@ -48,7 +47,7 @@ func RunPrometheusClient(monitoringChan <-chan b.TaskSummary, port int) {
 		}
 	}()
 
-	log.Error(http.ListenAndServe(":"+strconv.Itoa(port), nil))
+	http.ListenAndServe(":"+strconv.Itoa(port), nil)
 
 	return
 }

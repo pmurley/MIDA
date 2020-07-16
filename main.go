@@ -11,7 +11,7 @@ func main() {
 	rootCmd := getRootCommand()
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Error(err)
+		log.Log.Error(err)
 	}
 
 	return

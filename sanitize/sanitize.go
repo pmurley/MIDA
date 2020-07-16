@@ -128,7 +128,7 @@ func getBrowserBinaryPath(rt b.RawTask, log *logrus.Logger) (string, error) {
 		}
 	} else {
 		_, err := os.Stat(*rt.Browser.BrowserBinary)
-		if err != nil {
+		if err == nil {
 			log.Debugf("set browser to %s", *rt.Browser.BrowserBinary)
 			return *rt.Browser.BrowserBinary, nil
 		}

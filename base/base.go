@@ -187,6 +187,17 @@ type FinalResult struct {
 	DTResourceMetadata map[string]DTResource `json:"resource_metadata"` // Metadata on each resource loaded
 }
 
+func AllocateNewCompressedTaskSet() *CompressedTaskSet {
+	var cts = new(CompressedTaskSet)
+	cts.URL = new([]string)
+	cts.Browser = AllocateNewBrowserSettings()
+	cts.Completion = AllocateNewCompletionSettings()
+	cts.Data = AllocateNewDataSettings()
+	cts.Output = AllocateNewOutputSettings()
+	cts.Repeat = new(int)
+	return cts
+}
+
 // AllocateNewTask allocates a new RawTask struct, initializing everything to zero values
 func AllocateNewTask() *RawTask {
 	var task = new(RawTask)

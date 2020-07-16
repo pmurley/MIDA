@@ -13,7 +13,7 @@ func stage5(finalResultChan <-chan t.FinalResult, monitoringChan chan<- t.TaskSu
 	for fr := range finalResultChan {
 		err := storage.Store(fr)
 		if err != nil {
-			log.Error(err)
+			log.Log.Error(err)
 		}
 
 		pipelineWG.Done()

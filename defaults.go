@@ -23,9 +23,9 @@ func setDefaults() {
 	viper.SetDefault("monitor", false)
 	viper.SetDefault("log-level", 2)
 	viper.SetDefault("task-file", "examples/example_task.json")
-	viper.SetDefault("rabbitmqurl", "localhost:5672")
-	viper.SetDefault("rabbitmquser", "")
-	viper.SetDefault("rabbitmqpass", "")
-	viper.SetDefault("rabbitmqtaskqueue", "tasks")
-	viper.SetDefault("rabbitmqbroadcastqueue", "broadcast")
+
+	viper.SetDefault("amqpuser", "")
+	viper.SetDefault("amqppass", "")
+	viper.SetDefault("amqphost", "localhost")
+	viper.SetDefault("amqpport", 5672)
 }

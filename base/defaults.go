@@ -37,9 +37,7 @@ const (
 
 	DefaultShuffle = true // Whether to shuffle order of task processing
 
-	AlphaNumChars           = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890" // Set of characters for generating unique IDs
-	DefaultIdentifierLength = 16                                     // Random identifier for each crawl
-	DefaultProtocolPrefix   = "https://"                             // If no protocol is provided, we use https for the crawl
+	DefaultProtocolPrefix = "https://" // If no protocol is provided, we use https for the crawl
 )
 
 var (

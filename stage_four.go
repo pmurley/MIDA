@@ -12,7 +12,7 @@ func stage4(rawResultChan <-chan b.RawResult, finalResultChan chan<- b.FinalResu
 	for rawResult := range rawResultChan {
 		fr, err := postprocess.DevTools(&rawResult)
 		if err != nil {
-			log.Error(err)
+			log.Log.Error(err)
 			continue
 		}
 

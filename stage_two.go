@@ -12,7 +12,7 @@ func stage2(rawTaskChan <-chan b.RawTask, sanitizedTaskChan chan<- b.TaskWrapper
 	for r := range rawTaskChan {
 		st, err := sanitize.Task(r)
 		if err != nil {
-			log.Error(err)
+			log.Log.Error(err)
 			continue
 		}
 		pipelineWG.Add(1)

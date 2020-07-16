@@ -4,6 +4,7 @@ import (
 	b "github.com/pmurley/mida/base"
 	"github.com/pmurley/mida/log"
 	"github.com/pmurley/mida/monitor"
+	"github.com/pmurley/mida/sanitize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -61,9 +62,9 @@ func InitPipeline(cmd *cobra.Command, args []string) {
 	storageWG.Wait()
 
 	// Cleanup any remaining temporary files before we exit
-	err := os.RemoveAll(b.DefaultTempDir)
+	err := os.RemoveAll(sanitize.ExpandPath(b.DefaultTempDir))
 	if err != nil {
-		log.Error(err)
+		log.Log.Error(err)
 	}
 
 	return
