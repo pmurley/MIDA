@@ -24,8 +24,8 @@ func setDefaults() {
 	viper.SetDefault("log-level", 2)
 	viper.SetDefault("task-file", "examples/example_task.json")
 
-	viper.SetDefault("amqpuser", "")
-	viper.SetDefault("amqppass", "")
-	viper.SetDefault("amqphost", "localhost")
-	viper.SetDefault("amqpport", 5672)
+	viper.SetDefault("amqp-user", "")
+	viper.SetDefault("amqp-pass", "")
+	viper.SetDefault("amqp-uri", "amqp://localhost:5672")
+	viper.SetDefault("amqp-task-queue", "mida-tasks")
 }

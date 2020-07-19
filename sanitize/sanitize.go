@@ -16,7 +16,7 @@ import (
 
 // Task takes a raw tasks, checks it for validity, adds default values as needed,
 // and creates a TaskWrapper object for it so it can be passed on for the site visit.
-func Task(rt b.RawTask) (b.TaskWrapper, error) {
+func Task(rt *b.RawTask) (b.TaskWrapper, error) {
 	var tw b.TaskWrapper
 	var err error
 
@@ -90,7 +90,7 @@ func Task(rt b.RawTask) (b.TaskWrapper, error) {
 // Order of preference:
 //   1. Chromium
 //   2. Chrome
-func getBrowserBinaryPath(rt b.RawTask, log *logrus.Logger) (string, error) {
+func getBrowserBinaryPath(rt *b.RawTask, log *logrus.Logger) (string, error) {
 
 	if rt.Browser == nil || rt.Browser.BrowserBinary == nil || *rt.Browser.BrowserBinary == "" {
 		if runtime.GOOS == "darwin" {
@@ -171,7 +171,7 @@ func getBrowserBinaryPath(rt b.RawTask, log *logrus.Logger) (string, error) {
 // getBrowserFlags uses the flag and extension settings passed in in the RawTask to create a single string
 // slice with the flags we will use for our browser. Note that this slice will not include the specific
 // flag which allows remote control of the browser. This flag will be added in Stage 3.
-func getBrowserFlags(rt b.RawTask, log *logrus.Logger) ([]string, error) {
+func getBrowserFlags(rt *b.RawTask, log *logrus.Logger) ([]string, error) {
 	result := make([]string, 0)
 
 	if rt.Browser == nil {
@@ -239,7 +239,7 @@ func getBrowserFlags(rt b.RawTask, log *logrus.Logger) ([]string, error) {
 
 // getUserDataDirectory reads a raw task. If the task specifies a valid user data directory, it is
 // returned. Otherwise, getUserDataDirectory selects a default directory based on the task UUID
-func getUserDataDirectory(rt b.RawTask, tempDir string) (string, error) {
+func getUserDataDirectory(rt *b.RawTask, tempDir string) (string, error) {
 	if rt.Browser != nil && rt.Browser.UserDataDirectory != nil && *rt.Browser.UserDataDirectory != "" {
 		return *rt.Browser.UserDataDirectory, nil
 	} else {

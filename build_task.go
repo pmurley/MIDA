@@ -2,13 +2,10 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
 	b "github.com/pmurley/mida/base"
-	"github.com/pmurley/mida/log"
 	"github.com/pmurley/mida/sanitize"
 	"github.com/spf13/cobra"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strconv"
@@ -19,7 +16,19 @@ func BuildCompressedTaskSet(cmd *cobra.Command, args []string) (*b.CompressedTas
 	ts := b.AllocateNewCompressedTaskSet()
 	var err error
 
-	if cmd.Name() == "build" {
+	if cmd.Name() == "go" {
+		// Get URLs from arguments
+		for _, arg := range args {
+			pieces := strings.Split(arg, ",")
+			for _, piece := range pieces {
+				u, err := sanitize.ValidateURL(piece)
+				if err != nil {
+					return ts, err
+				}
+				*ts.URL = append(*ts.URL, u)
+			}
+		}
+	} else if cmd.Name() == "build" {
 		// Get URL from URL file
 		fName, err := cmd.Flags().GetString("url-file")
 		if err != nil {
@@ -132,36 +141,4 @@ func BuildCompressedTaskSet(cmd *cobra.Command, args []string) (*b.CompressedTas
 	}
 
 	return ts, nil
-}
-
-func writeCompressedTaskSet(cts *b.CompressedTaskSet, cmd *cobra.Command) error {
-	// Check whether output file exists. Error if it does and overwrite is not set.
-	fName, err := cmd.Flags().GetString("outfile")
-
-	if err != nil {
-		return err
-	}
-	overwrite, err := cmd.Flags().GetBool("overwrite")
-	if err != nil {
-		return err
-	}
-	_, err = os.Stat(fName)
-	if err == nil && !overwrite {
-		log.Log.Error("Task file '", fName, "' already exists")
-		return errors.New("use '-x' to overwrite existing task file")
-	}
-
-	// Write output JSON file
-	outData, err := json.Marshal(cts)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(fName, outData, 0644)
-	if err != nil {
-		return errors.New("failed to write task file")
-	}
-
-	log.Log.Info("Successfully wrote task file to ", fName)
-	return nil
 }

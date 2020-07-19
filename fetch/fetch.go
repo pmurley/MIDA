@@ -1,18 +1,29 @@
 package fetch
 
-import b "github.com/pmurley/mida/base"
+import (
+	b "github.com/pmurley/mida/base"
+	"math/rand"
+	"time"
+)
 
-func FromFile(fileName string) (<-chan b.RawTask, error) {
+func FromFile(fileName string, shuffle bool) (<-chan *b.RawTask, error) {
 	taskSet, err := b.ReadTasksFromFile(fileName)
 	if err != nil {
 		return nil, err
 	}
 
-	res := make(chan b.RawTask)
+	if shuffle {
+		rand.Seed(time.Now().UnixNano())
+		rand.Shuffle(len(taskSet),
+			func(i, j int) { taskSet[i], taskSet[j] = taskSet[j], taskSet[i] })
+	}
+
+	res := make(chan *b.RawTask)
 
 	go func() {
 		for _, task := range taskSet {
-			res <- task
+			taskCopy := task
+			res <- &taskCopy
 		}
 		close(res)
 	}()

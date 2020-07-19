@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-func stage3(taskWrapperChan <-chan t.TaskWrapper, rawResultChan chan<- t.RawResult, retryChan <-chan t.TaskWrapper, crawlerWG *sync.WaitGroup) {
+func stage3(taskWrapperChan <-chan *t.TaskWrapper, rawResultChan chan<- *t.RawResult, crawlerWG *sync.WaitGroup) {
 
 	for tw := range taskWrapperChan {
 		rawResult, err := browser.VisitPageDevtoolsProtocol(tw)
@@ -14,7 +14,7 @@ func stage3(taskWrapperChan <-chan t.TaskWrapper, rawResultChan chan<- t.RawResu
 			break
 		}
 
-		rawResultChan <- *rawResult
+		rawResultChan <- rawResult
 	}
 
 	crawlerWG.Done()

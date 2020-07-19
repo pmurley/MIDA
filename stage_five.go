@@ -7,11 +7,16 @@ import (
 	"sync"
 )
 
-func stage5(finalResultChan <-chan t.FinalResult, monitoringChan chan<- t.TaskSummary,
-	retryChan chan<- t.TaskWrapper, storageWG *sync.WaitGroup, pipelineWG *sync.WaitGroup) {
+func stage5(finalResultChan <-chan *t.FinalResult, monitoringChan chan<- *t.TaskSummary,
+	storageWG *sync.WaitGroup, pipelineWG *sync.WaitGroup) {
 
 	for fr := range finalResultChan {
-		err := storage.Store(fr)
+		err := storage.StoreAll(fr)
+		if err != nil {
+			log.Log.Error(err)
+		}
+
+		err = storage.CleanupTask(fr)
 		if err != nil {
 			log.Log.Error(err)
 		}

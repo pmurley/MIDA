@@ -10,7 +10,7 @@ import (
 
 // RunPrometheusClient is responsible for running a client which will
 // be scraped by a Prometheus server
-func RunPrometheusClient(monitoringChan <-chan b.TaskSummary, port int) {
+func RunPrometheusClient(monitoringChan <-chan *b.TaskSummary, port int) {
 
 	browserDurationHistogram := prometheus.NewHistogram(
 		prometheus.HistogramOpts{

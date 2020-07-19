@@ -2,7 +2,7 @@ package base
 
 const (
 	// Output Parameters
-	DefaultTempDir              = "~/go/src/github.com/pmurley/mida/tmp"
+	DefaultTempDir              = ".midatmp"
 	DefaultLocalOutputPath      = "results"
 	DefaultResourceSubdir       = "resources"
 	DefaultCrawlMetadataFile    = "metadata.json"

@@ -13,17 +13,18 @@
   },
   "completion_settings": {
     "completion_condition": "TimeoutOnly",
-    "timeout": 15
+    "timeout": 10
   },
   "data_settings": {
     "all_resources": false,
     "resource_metadata": true
   },
   "output_settings": {
-    "local_output_settings": {
+    "sftp_output_settings": {
       "enable": true,
-      "path": "~/go/src/github.com/pmurley/mida/results"
+      "host": "dragonstone.sprai.org",
+      "path": "/home/pmurley/mida_results"
     }
   },
-  "repeat": 1
+  "repeat": 3
 }

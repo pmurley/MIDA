@@ -143,9 +143,9 @@ type TaskTiming struct {
 
 // Statistics gathered about a specific task
 type TaskSummary struct {
-	Success     bool        `json:"success"`      // True if the task did not fail
-	TaskWrapper TaskWrapper `json:"task_wrapper"` // Wrapper containing the full task
-	TaskTiming  TaskTiming  `json:"task_timing"`  // Timing data for the task
+	Success     bool         `json:"success"`      // True if the task did not fail
+	TaskWrapper *TaskWrapper `json:"task_wrapper"` // Wrapper containing the full task
+	TaskTiming  TaskTiming   `json:"task_timing"`  // Timing data for the task
 
 	NumResources int `json:"num_resources,omitempty"` // Number of resources the browser loaded
 }
@@ -305,14 +305,24 @@ func WriteTaskSliceToFile(tasks []RawTask, filename string) error {
 
 // WriteCompressedTaskSetToFile takes a CompressedTaskSet and writes a JSON representation
 // of it out to a file
-func WriteCompressedTaskSetToFile(tasks CompressedTaskSet, filename string) error {
-	taskBytes, err := WriteCompressedTaskSetToBytes(tasks)
+func WriteCompressedTaskSetToFile(cts *CompressedTaskSet, filename string, overwrite bool) error {
+	_, err := os.Stat(filename)
+	if err == nil && !overwrite {
+		return errors.New("use '-x' to overwrite existing task file")
+	}
+
+	// Write output JSON file
+	outData, err := json.Marshal(cts)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(filename, taskBytes, 0644)
-	return err
+	err = ioutil.WriteFile(filename, outData, 0644)
+	if err != nil {
+		return errors.New("failed to write task file")
+	}
+
+	return nil
 }
 
 // ExpandCompressedTaskSet takes a CompressedTaskSet object and converts it into a slice

@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-func VisitPageDevtoolsProtocol(tw b.TaskWrapper) (*b.RawResult, error) {
+func VisitPageDevtoolsProtocol(tw *b.TaskWrapper) (*b.RawResult, error) {
 	var err error
 
 	// Fully allocate our raw result object -- should be locked whenever it is read or written

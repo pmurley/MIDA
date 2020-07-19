@@ -28,7 +28,7 @@ func getRootCommand() *cobra.Command {
 		"Number of parallel goroutines working to store task results")
 	cmdRoot.PersistentFlags().BoolVarP(&monitor, "monitor", "m", false,
 		"Enable monitoring via Prometheus by hosting a HTTP server")
-	cmdRoot.PersistentFlags().IntVarP(&promPort, "prom-port", "p", viper.GetInt("prom-port"),
+	cmdRoot.PersistentFlags().IntVarP(&promPort, "prom-port", "z", viper.GetInt("prom-port"),
 		"Port used for hosting metrics for a Prometheus server")
 	cmdRoot.PersistentFlags().IntVarP(&logLevel, "log-level", "l", viper.GetInt("log-level"),
 		"Log Level for MIDA (0=Error, 1=Warn, 2=Info, 3=Debug)")
@@ -39,8 +39,10 @@ func getRootCommand() *cobra.Command {
 	}
 
 	cmdRoot.AddCommand(getBuildCommand())
+	cmdRoot.AddCommand(getClientCommand())
 	cmdRoot.AddCommand(getFileCommand())
 	cmdRoot.AddCommand(getLoadCommand())
+	cmdRoot.AddCommand(getGoCommand())
 
 	return cmdRoot
 }
@@ -110,45 +112,47 @@ func getLoadCommand() *cobra.Command {
 			var params = amqp.ConnParams{
 				User: viper.GetString("amqpuser"),
 				Pass: viper.GetString("amqppass"),
-				Host: viper.GetString("amqphost"),
-				Port: viper.GetInt("amqpport"),
-				Tls:  viper.GetBool("tls"),
+				Uri:  viper.GetString("amqpserver"),
 			}
 
-			numTasksLoaded, err := amqp.LoadTasks(tasks, params, viper.GetString("queue"),
-				uint8(viper.GetInt("priority")), viper.GetBool("shuffle"))
+			queue, err := cmd.Flags().GetString("queue")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+
+			priority, err := cmd.Flags().GetUint8("priority")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+
+			shuffle, err := cmd.Flags().GetBool("shuffle")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+
+			numTasksLoaded, err := amqp.LoadTasks(tasks, params, queue,
+				priority, shuffle)
 			if err != nil {
 				log.Log.Fatal(err)
 			}
 
 			log.Log.Infof("Loaded %d tasks into queue \"%s\" with priority %d",
-				numTasksLoaded, viper.GetString("queue"), viper.GetInt("priority"))
+				numTasksLoaded, queue, priority)
 		},
 	}
 
 	var (
-		taskFile string
 		shuffle  bool
 		queue    string
 		priority uint8
 	)
 
-	cmdLoad.Flags().StringVarP(&taskFile, "task-file", "f", viper.GetString("task-file"),
-		"Task file to process")
-	cmdLoad.Flags().StringVarP(&queue, "queue", "q", amqp.DefaultQueue,
+	cmdLoad.Flags().StringVarP(&queue, "queue", "", amqp.DefaultTaskQueue,
 		"AMQP queue into which we will load tasks")
 	cmdLoad.Flags().BoolVarP(&shuffle, "shuffle", "", b.DefaultShuffle,
 		"Randomize loading order for tasks")
-	cmdLoad.Flags().BoolVarP(&shuffle, "tls", "", amqp.DefaultTls,
-		"Randomize loading order for tasks")
-	cmdLoad.Flags().Uint8VarP(&priority, "priority", "p", amqp.DefaultPriority,
+	cmdLoad.Flags().Uint8VarP(&priority, "priority", "", amqp.DefaultPriority,
 		"Priority of tasks we are loaded (AMQP: x-max-priority setting)")
-
-	// Enable some autocomplete features of Cobra
-	_ = cmdLoad.MarkFlagFilename("task-file")
-
-	// We have to get a task file
-	_ = cmdLoad.MarkFlagRequired("task-file")
 
 	return cmdLoad
 }
@@ -205,7 +209,19 @@ func getBuildCommand() *cobra.Command {
 				log.Log.Error(err)
 				return
 			}
-			err = writeCompressedTaskSet(cts, cmd)
+			outfile, err := cmd.Flags().GetString("outfile")
+			if err != nil {
+				log.Log.Error(err)
+				return
+			}
+
+			overwrite, err := cmd.Flags().GetBool("overwrite")
+			if err != nil {
+				log.Log.Error(err)
+				return
+			}
+
+			err = b.WriteCompressedTaskSetToFile(cts, outfile, overwrite)
 			if err != nil {
 				log.Log.Error(err)
 			}
@@ -257,4 +273,156 @@ func getBuildCommand() *cobra.Command {
 	_ = cmdBuild.MarkFlagFilename("url-file")
 
 	return cmdBuild
+}
+
+func getGoCommand() *cobra.Command {
+	var (
+		// Browser settings
+		browser            string
+		userDataDir        string
+		addBrowserFlags    []string
+		removeBrowserFlags []string
+		setBrowserFlags    []string
+		extensions         []string
+
+		// Completion settings
+		completionCondition string
+		timeout             int
+		timeAfterLoad       int
+
+		// Data Gathering settings
+		resourceMetadata bool
+		allResources     bool
+
+		// Output settings
+		resultsOutputPath string // Results from task path
+
+		outputPath string // Task file path
+		overwrite  bool
+
+		// How many times a task should be repeated
+		repeat int
+	)
+
+	var cmdGo = &cobra.Command{
+		Use:   "go",
+		Short: "Crawl from the command line",
+		Long:  `Start a crawl right here and now, normally specifying urls on the command line`,
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ll, err := cmd.Flags().GetInt("log-level")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+			err = log.ConfigureLogging(ll)
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+
+			InitPipeline(cmd, args)
+		},
+	}
+
+	cmdGo.Flags().StringVarP(&browser, "browser", "b",
+		"", "Path to browser binary to use for this task")
+	cmdGo.Flags().StringVarP(&userDataDir, "user-data-dir", "d",
+		"", "User Data Directory used for this task.")
+	cmdGo.Flags().StringSliceP("add-browser-flags", "", addBrowserFlags,
+		"Flags to add to browser launch (comma-separated, no '--')")
+	cmdGo.Flags().StringSliceP("remove-browser-flags", "", removeBrowserFlags,
+		"Flags to remove from browser launch (comma-separated, no '--')")
+	cmdGo.Flags().StringSliceP("set-browser-flags", "", setBrowserFlags,
+		"Overrides default browser flags (comma-separated, no '--')")
+	cmdGo.Flags().StringSliceP("extensions", "e", extensions,
+		"Full paths to browser extensions to use (comma-separated, no'--')")
+
+	cmdGo.Flags().StringVarP(&completionCondition, "completion", "y", string(b.DefaultCompletionCondition),
+		"Completion condition for tasks (CompleteOnTimeoutOnly, CompleteOnLoadEvent, CompleteOnTimeoutAfterLoad")
+	cmdGo.Flags().IntVarP(&timeout, "timeout", "t", b.DefaultTimeout,
+		"Timeout (in seconds) after which the browser will close and the task will complete")
+	cmdGo.Flags().IntVarP(&timeAfterLoad, "time-after-load", "", b.DefaultTimeAfterLoad,
+		"Time after load event to remain on page (overridden by timeout if reached first)")
+
+	cmdGo.Flags().BoolVarP(&allResources, "all-resources", "", b.DefaultAllResources,
+		"Gather and store all resources downloaded by browser")
+	cmdGo.Flags().BoolVarP(&resourceMetadata, "resource-metadata", "", b.DefaultResourceMetadata,
+		"Gather and store metadata about all resources downloaded by browser")
+
+	cmdGo.Flags().StringVarP(&resultsOutputPath, "results-output-path", "r", storage.DefaultOutputPath,
+		"Path (local or remote) to store results in. A new directory will be created inside this one for each task.")
+
+	cmdGo.Flags().StringVarP(&outputPath, "outfile", "o", viper.GetString("task-file"),
+		"Path to write the newly-created JSON task file")
+	cmdGo.Flags().BoolVarP(&overwrite, "overwrite", "x", false,
+		"Allow overwriting of an existing task file")
+
+	cmdGo.Flags().IntVarP(&repeat, "repeat", "", 1,
+		"How many times to repeat a given task")
+
+	return cmdGo
+}
+
+func getClientCommand() *cobra.Command {
+	var cmdClient = &cobra.Command{
+		Use:   "client",
+		Short: "Act as AMQP Client for tasks",
+		Long: `MIDA acts as a client to a AMQP server.
+An address and credentials must be provided. MIDA will remain running until
+it receives explicit instructions to close, or the connection to AMQP server is lost.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			ll, err := cmd.Flags().GetInt("log-level")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+			err = log.ConfigureLogging(ll)
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+
+			user, err := cmd.Flags().GetString("user")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+
+			if user != "" {
+				viper.Set("amqp-user", user)
+			}
+
+			pass, err := cmd.Flags().GetString("pass")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+			if pass != "" {
+				viper.Set("amqp-pass", pass)
+			}
+
+			uri, err := cmd.Flags().GetString("uri")
+			if err != nil {
+				log.Log.Fatal(err)
+			}
+			if uri != "" {
+				viper.Set("amqp-uri", uri)
+			}
+
+			InitPipeline(cmd, args)
+		},
+	}
+
+	var (
+		queue string
+		user  string
+		pass  string
+		uri   string
+	)
+
+	cmdClient.Flags().StringVarP(&queue, "queue", "", "",
+		"AMQP queue into which we will load tasks")
+	cmdClient.Flags().StringVarP(&user, "user", "", "",
+		"AMQP User")
+	cmdClient.Flags().StringVarP(&pass, "pass", "", "",
+		"AMQP Password")
+	cmdClient.Flags().StringVarP(&uri, "uri", "", "",
+		"AMQP URI")
+
+	return cmdClient
 }
